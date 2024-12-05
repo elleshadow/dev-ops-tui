@@ -3,7 +3,42 @@
 # Get the absolute path to the project root
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Source components
+# Source core modules first
+source "$PROJECT_ROOT/core/logging.sh"
+source "$PROJECT_ROOT/core/db.sh"
+
+# Initialize logging with proper error handling
+if ! init_logging; then
+    echo "ERROR: Failed to initialize logging"
+    exit 1
+fi
+
+# Ensure database directory exists
+if [[ "$DB_PATH" != ":memory:" ]]; then
+    mkdir -p "$(dirname "$DB_PATH")" || {
+        log_error "Failed to create database directory"
+        exit 1
+    }
+fi
+
+# Initialize database with retries
+max_retries=3
+retry_count=0
+while ((retry_count < max_retries)); do
+    if init_database; then
+        break
+    fi
+    ((retry_count++))
+    log_warning "Database initialization attempt $retry_count failed, retrying..."
+    sleep 1
+done
+
+if ((retry_count >= max_retries)); then
+    log_error "Failed to initialize database after $max_retries attempts"
+    exit 1
+fi
+
+# Source remaining components
 source "$PROJECT_ROOT/tui/theme.sh"
 source "$PROJECT_ROOT/tui/components/dialog.sh"
 source "$PROJECT_ROOT/tui/components/docker_menu.sh"
@@ -11,17 +46,9 @@ source "$PROJECT_ROOT/tui/components/auth.sh"
 source "$PROJECT_ROOT/tui/components/config_menu.sh"
 source "$PROJECT_ROOT/tui/components/test_viewer.sh"
 source "$PROJECT_ROOT/tui/components/log_viewer.sh"
-source "$PROJECT_ROOT/core/logging.sh"
 source "$PROJECT_ROOT/core/platform_info.sh"
 
-# Initialize logging
-init_logging
-
-# Collect platform information
-log_info "Collecting platform information..."
-collect_all_platform_info
-
-# Handle authentication
+# Handle authentication first
 if ! handle_auth; then
     log_error "Authentication failed"
     exit 1
@@ -32,8 +59,17 @@ if [[ -n "$TEST_MODE" ]]; then
     ADMIN_USER="test_admin"
     ADMIN_PASS_HASH=$(hash_password "test_password")
 else
-    IFS='|' read -r ADMIN_USER ADMIN_PASS_HASH < <(get_auth_credentials)
+    if ! IFS='|' read -r ADMIN_USER ADMIN_PASS_HASH < <(get_auth_credentials); then
+        log_error "Failed to get stored credentials"
+        exit 1
+    fi
 fi
+
+# Now collect platform information after authentication
+log_info "Collecting platform information..."
+collect_all_platform_info || {
+    log_warning "Failed to collect platform information - continuing with defaults"
+}
 
 # Configure services with credentials
 configure_services() {

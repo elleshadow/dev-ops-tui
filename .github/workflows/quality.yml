@@ -1,0 +1,53 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install ShellCheck
+      run: sudo apt-get install -y shellcheck
+
+    - name: Run ShellCheck
+      run: |
+        find . -type f -name "*.sh" -exec shellcheck {} +
+
+    - name: Check Script Permissions
+      run: |
+        find . -type f -name "*.sh" -not -perm -u=x -exec echo "Warning: Script {} is not executable" \;
+
+    - name: Check for Debugging Statements
+      run: |
+        ! grep -r "set -x" . --include="*.sh" || echo "Warning: Debug mode (set -x) found in scripts"
+
+    - name: Check for TODO Comments
+      run: |
+        ! grep -r "TODO" . || echo "Note: TODO comments found"
+
+    - name: Check Line Endings
+      run: |
+        ! find . -type f -name "*.sh" -exec file {} \; | grep CRLF || echo "Warning: CRLF line endings found"
+
+    - name: Check File Encoding
+      run: |
+        ! find . -type f -name "*.sh" -exec file {} \; | grep -v "ASCII\|UTF-8" || echo "Warning: Non-ASCII/UTF-8 files found"
+
+    - name: Markdown Lint
+      uses: avto-dev/markdown-lint@v1
+      with:
+        config: '.markdownlint.json'
+        args: '**/*.md'
+        ignore: 'node_modules'
+
+    - name: YAML Lint
+      uses: ibiqlik/action-yamllint@v3
+      with:
+        file_or_dir: .
+        config_file: .yamllint.yml 

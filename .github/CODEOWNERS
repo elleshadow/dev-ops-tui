@@ -1,0 +1,24 @@
+# Global owners
+* @yourusername
+
+# Core TUI components
+/tui/components/ @yourusername
+/tui/components/core/ @yourusername
+
+# Documentation
+/docs/ @yourusername
+*.md @yourusername
+
+# Tests
+/tests/ @yourusername
+
+# CI/CD Configuration
+/.github/workflows/ @yourusername
+
+# Docker Configuration
+/docker/ @yourusername
+
+# Scripts
+*.sh @yourusername
+
+# Add more owners as needed when team grows 

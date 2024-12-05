@@ -1277,4 +1277,78 @@ show_settings_menu() {
                 ;;
         esac
     done
-} 
+}
+
+# Deploy services with progress dialog
+deploy_services() {
+    # Check Docker system first
+    if ! check_docker_system; then
+        dialog --clear --title "Error" \
+            --msgbox "Docker system check failed. Please fix the issues before deploying." 8 60
+        return 1
+    fi
+
+    # Show deployment confirmation
+    dialog --clear --title "Deploy Services" \
+        --yesno "This will deploy all configured services. Continue?" 8 60 || return 1
+
+    # Create progress dialog
+    {
+        echo "XXX"
+        echo "10"
+        echo "Checking Docker Compose..."
+        echo "XXX"
+        
+        if ! check_docker_compose_installed; then
+            echo "XXX"
+            echo "100"
+            echo "Error: Docker Compose is not installed!"
+            echo "XXX"
+            sleep 2
+            return 1
+        fi
+
+        echo "XXX"
+        echo "20"
+        echo "Pulling latest images..."
+        echo "XXX"
+        
+        docker-compose pull
+
+        echo "XXX"
+        echo "50"
+        echo "Starting services..."
+        echo "XXX"
+        
+        if ! compose_up; then
+            echo "XXX"
+            echo "100"
+            echo "Error: Failed to start services!"
+            echo "XXX"
+            sleep 2
+            return 1
+        fi
+
+        echo "XXX"
+        echo "80"
+        echo "Configuring services..."
+        echo "XXX"
+        
+        configure_services
+
+        echo "XXX"
+        echo "100"
+        echo "Deployment complete!"
+        echo "XXX"
+        sleep 1
+    } | dialog --title "Deploying Services" --gauge "Starting deployment..." 8 60 0
+
+    # Show completion message
+    dialog --clear --title "Success" \
+        --msgbox "Services have been deployed successfully!" 8 60
+
+    return 0
+}
+
+# Export functions
+export -f deploy_services 

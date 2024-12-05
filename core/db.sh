@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Database configuration
-DB_PATH=${DB_PATH:-"config.db"}
+: "${DB_PATH:=${HOME}/.docker-manager/config.db}"
 
 # Ensure SQLite3 is available
 if ! command -v sqlite3 >/dev/null 2>&1; then
@@ -21,15 +21,24 @@ hash_password() {
 
 # Initialize database with all required tables
 init_database() {
-    echo "Initializing database at $DB_PATH..."
+    log_info "Initializing database at $DB_PATH..."
     
     # Create data directory if needed
     if [[ "$DB_PATH" != ":memory:" ]]; then
-        mkdir -p "$(dirname "$DB_PATH")"
+        mkdir -p "$(dirname "$DB_PATH")" || {
+            log_error "Failed to create database directory"
+            return 1
+        }
     fi
     
-    # Create tables directly
-    sqlite3 "$DB_PATH" "
+    # Check if database is accessible
+    if ! sqlite3 "$DB_PATH" "SELECT 1;" >/dev/null 2>&1; then
+        log_warning "Database may be corrupted or inaccessible, attempting to recreate"
+        rm -f "$DB_PATH"
+    fi
+    
+    # Create tables without transaction (SQLite handles DDL outside transactions)
+    if ! sqlite3 "$DB_PATH" "
     CREATE TABLE IF NOT EXISTS auth_config (
         username TEXT PRIMARY KEY,
         password_hash TEXT NOT NULL,
@@ -120,23 +129,38 @@ init_database() {
         status TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );" || { echo "Error: Failed to create tables" >&2; return 1; }
-    
-    # Verify platform_info table was created
-    if ! sqlite3 "$DB_PATH" "SELECT name FROM sqlite_master WHERE type='table' AND name='platform_info';" | grep -q "platform_info"; then
-        echo "Error: Failed to create platform_info table" >&2
+    );"; then
+        log_error "Failed to create tables"
         return 1
     fi
     
-    # Verify tables were created
-    local tables=$(sqlite3 "$DB_PATH" ".tables")
-    if [[ -n "$tables" ]]; then
-        echo "Database initialized successfully"
-        return 0
+    # Verify all required tables exist
+    local required_tables=(
+        "auth_config" "service_config" "port_config" "volume_config"
+        "env_config" "service_dependencies" "shared_config" "platform_info"
+        "test_results" "config" "menu_state" "container_config"
+    )
+    
+    local missing_tables=()
+    for table in "${required_tables[@]}"; do
+        if ! sqlite3 "$DB_PATH" "SELECT name FROM sqlite_master WHERE type='table' AND name='$table';" | grep -q "$table"; then
+            missing_tables+=("$table")
+        fi
+    done
+    
+    if ((${#missing_tables[@]} > 0)); then
+        log_error "Failed to create tables: ${missing_tables[*]}"
+        return 1
     fi
     
-    echo "Error: Failed to create database tables" >&2
-    return 1
+    # Verify database is writable
+    if ! sqlite3 "$DB_PATH" "PRAGMA quick_check;" >/dev/null 2>&1; then
+        log_error "Database integrity check failed"
+        return 1
+    fi
+    
+    log_info "Database initialized successfully"
+    return 0
 }
 
 # Auth functions
@@ -144,7 +168,13 @@ save_auth_credentials() {
     local username="$1"
     local password="$2"
     local password_hash=$(hash_password "$password")
-    sqlite3 "$DB_PATH" "INSERT OR REPLACE INTO auth_config (username, password_hash) VALUES ('$username', '$password_hash');"
+    
+    if ! sqlite3 "$DB_PATH" "INSERT OR REPLACE INTO auth_config (username, password_hash) VALUES ('$username', '$password_hash');"; then
+        log_error "Failed to save auth credentials for user $username"
+        return 1
+    fi
+    log_info "Saved auth credentials for user $username"
+    return 0
 }
 
 verify_credentials() {
@@ -152,18 +182,47 @@ verify_credentials() {
     local password="$2"
     local password_hash=$(hash_password "$password")
     local stored_hash
+    
     stored_hash=$(sqlite3 "$DB_PATH" "SELECT password_hash FROM auth_config WHERE username='$username';")
-    [[ "$stored_hash" == "$password_hash" ]]
+    if [[ -z "$stored_hash" ]]; then
+        log_error "No credentials found for user $username"
+        return 1
+    fi
+    
+    if [[ "$stored_hash" != "$password_hash" ]]; then
+        log_error "Invalid password for user $username"
+        return 1
+    fi
+    
+    log_info "Successfully verified credentials for user $username"
+    return 0
 }
 
 get_auth_credentials() {
-    sqlite3 "$DB_PATH" "SELECT username, password_hash FROM auth_config LIMIT 1;"
+    local result
+    result=$(sqlite3 "$DB_PATH" "SELECT username, password_hash FROM auth_config LIMIT 1;")
+    if [[ -z "$result" ]]; then
+        log_error "No auth credentials found in database"
+        return 1
+    fi
+    echo "$result"
+    return 0
 }
 
 check_first_run() {
     local count
     count=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM auth_config;")
     [[ "$count" -eq 0 ]]
+}
+
+# Reset auth credentials by clearing the auth_config table
+reset_auth_credentials() {
+    if ! sqlite3 "$DB_PATH" "DELETE FROM auth_config;"; then
+        log_error "Failed to reset auth credentials"
+        return 1
+    fi
+    log_info "Successfully reset auth credentials"
+    return 0
 }
 
 # Configuration functions
@@ -274,6 +333,7 @@ export -f save_auth_credentials
 export -f verify_credentials
 export -f get_auth_credentials
 export -f check_first_run
+export -f reset_auth_credentials
 export -f set_config
 export -f get_config
 export -f delete_config

@@ -5,51 +5,38 @@ source "$(dirname "${BASH_SOURCE[0]}")/db.sh"
 
 # Initialize platform information in database
 init_platform_info() {
+    # First ensure database and table exist
+    if ! sqlite3 "$DB_PATH" "SELECT name FROM sqlite_master WHERE type='table' AND name='platform_info';" | grep -q "platform_info"; then
+        echo "Initializing database for platform info..."
+        init_database || { echo "Failed to initialize database" >&2; return 1; }
+    fi
+
     # System information
-    save_platform_info "os_type" "$(uname -s)" "Operating system type"
-    save_platform_info "os_version" "$(uname -r)" "Operating system version"
-    save_platform_info "architecture" "$(uname -m)" "System architecture"
-    save_platform_info "hostname" "$(hostname)" "System hostname"
+    save_platform_info "os_type" "$(uname -s)" "Operating system type" "system" || return 1
+    save_platform_info "os_version" "$(uname -r)" "Operating system version" "system" || return 1
+    save_platform_info "architecture" "$(uname -m)" "System architecture" "system" || return 1
+    save_platform_info "hostname" "$(hostname)" "System hostname" "system" || return 1
     
     # Memory information
     if is_darwin; then
         local total_mem="$(( $(sysctl -n hw.memsize) / 1024 / 1024 ))MB"
-        save_platform_info "total_memory" "$total_mem" "Total system memory"
-        save_platform_info "memory_pagesize" "$(sysctl -n hw.pagesize)" "Memory page size"
+        save_platform_info "total_memory" "$total_mem" "Total system memory" "memory" || return 1
+        save_platform_info "memory_pagesize" "$(sysctl -n hw.pagesize)" "Memory page size" "memory" || return 1
     else
         local total_mem="$(( $(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024 ))MB"
-        save_platform_info "total_memory" "$total_mem" "Total system memory"
-        save_platform_info "memory_pagesize" "$(getconf PAGE_SIZE)" "Memory page size"
+        save_platform_info "total_memory" "$total_mem" "Total system memory" "memory" || return 1
+        save_platform_info "memory_pagesize" "$(getconf PAGE_SIZE)" "Memory page size" "memory" || return 1
     fi
     
-    # CPU information
-    if is_darwin; then
-        save_platform_info "cpu_count" "$(sysctl -n hw.ncpu)" "Number of CPU cores"
-        save_platform_info "cpu_type" "$(sysctl -n machdep.cpu.brand_string)" "CPU type"
-    else
-        save_platform_info "cpu_count" "$(nproc)" "Number of CPU cores"
-        save_platform_info "cpu_type" "$(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)" "CPU type"
+    # Verify data was saved
+    local count
+    count=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM platform_info;")
+    if [[ "$count" -eq 0 ]]; then
+        echo "Error: Failed to save platform information" >&2
+        return 1
     fi
     
-    # Docker information
-    if command -v docker >/dev/null 2>&1; then
-        save_platform_info "docker_version" "$(docker version --format '{{.Server.Version}}' 2>/dev/null)" "Docker version"
-        save_platform_info "docker_api_version" "$(docker version --format '{{.Server.APIVersion}}' 2>/dev/null)" "Docker API version"
-        save_platform_info "docker_root_dir" "$(docker info --format '{{.DockerRootDir}}' 2>/dev/null)" "Docker root directory"
-    fi
-    
-    # Platform-specific paths
-    if is_darwin; then
-        save_platform_info "docker_socket" "/var/run/docker.sock" "Docker socket path"
-        save_platform_info "docker_config_dir" "$HOME/.docker" "Docker config directory"
-        save_platform_info "docker_vm_dir" "$HOME/Library/Containers/com.docker.docker" "Docker VM directory"
-        save_platform_info "docker_desktop_dir" "$HOME/Library/Application Support/Docker Desktop" "Docker Desktop directory"
-    else
-        save_platform_info "docker_socket" "/var/run/docker.sock" "Docker socket path"
-        save_platform_info "docker_config_dir" "$HOME/.docker" "Docker config directory"
-        save_platform_info "docker_data_dir" "/var/lib/docker" "Docker data directory"
-        save_platform_info "docker_service_file" "/lib/systemd/system/docker.service" "Docker service file"
-    fi
+    return 0
 }
 
 # Platform detection

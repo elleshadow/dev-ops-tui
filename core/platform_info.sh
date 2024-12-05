@@ -67,10 +67,28 @@ collect_network_info() {
 
 # Main function to collect all platform information
 collect_all_platform_info() {
-    collect_os_info
-    collect_docker_info
-    collect_hardware_info
-    collect_network_info
+    # First verify the platform_info table exists
+    if ! sqlite3 "$DB_PATH" "SELECT name FROM sqlite_master WHERE type='table' AND name='platform_info';" | grep -q "platform_info"; then
+        echo "Error: platform_info table does not exist. Initializing database..." >&2
+        init_database || { echo "Failed to initialize database" >&2; return 1; }
+    fi
+
+    # Collect all information with error checking
+    collect_os_info || { echo "Failed to collect OS info" >&2; return 1; }
+    collect_docker_info || { echo "Failed to collect Docker info" >&2; return 1; }
+    collect_hardware_info || { echo "Failed to collect hardware info" >&2; return 1; }
+    collect_network_info || { echo "Failed to collect network info" >&2; return 1; }
+    
+    # Verify we have some data
+    local count
+    count=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM platform_info;")
+    if [[ "$count" -eq 0 ]]; then
+        echo "Error: No platform information was collected" >&2
+        return 1
+    fi
+    
+    echo "Successfully collected platform information"
+    return 0
 }
 
 # Export functions

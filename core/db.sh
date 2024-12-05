@@ -120,7 +120,13 @@ init_database() {
         status TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );"
+    );" || { echo "Error: Failed to create tables" >&2; return 1; }
+    
+    # Verify platform_info table was created
+    if ! sqlite3 "$DB_PATH" "SELECT name FROM sqlite_master WHERE type='table' AND name='platform_info';" | grep -q "platform_info"; then
+        echo "Error: Failed to create platform_info table" >&2
+        return 1
+    fi
     
     # Verify tables were created
     local tables=$(sqlite3 "$DB_PATH" ".tables")

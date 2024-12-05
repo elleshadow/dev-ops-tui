@@ -1,205 +1,129 @@
 #!/bin/bash
 
-# TUI Dialog Component
+# Check for dialog command
+if ! command -v dialog >/dev/null 2>&1; then
+    echo "Error: dialog command not found. Please install dialog package first."
+    echo "On macOS: brew install dialog"
+    echo "On Ubuntu/Debian: sudo apt-get install dialog"
+    echo "On CentOS/RHEL: sudo yum install dialog"
+    exit 1
+fi
 
-# Import core modules
-source "$(dirname "${BASH_SOURCE[0]}")/core/base.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/core/config.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/core/validation.sh"
+# Cleanup function
+tui_cleanup() {
+    clear
+    reset
+    tput cnorm # Show cursor
+}
 
-# Dialog exit status codes
-declare -r TUI_DIALOG_OK=0
-declare -r TUI_DIALOG_CANCEL=1
-declare -r TUI_DIALOG_HELP=2
-declare -r TUI_DIALOG_EXTRA=3
-declare -r TUI_DIALOG_ITEM_HELP=4
-declare -r TUI_DIALOG_ESC=255
-declare -r TUI_DIALOG_ERROR=-1
-
-# Menu dialog
+# Dialog wrapper functions
 tui_dialog_menu() {
     local title="$1"
-    local message="$2"
+    local text="$2"
     local height="$3"
     local width="$4"
     shift 4
-    local items=("$@")
-    local menu_height
-    
-    # Calculate menu height based on number of items
-    menu_height=$(( ${#items[@]} / 2 ))
-    
-    # Ensure minimum dimensions
-    [ "$height" -lt $(( menu_height + 8 )) ] && height=$(( menu_height + 8 ))
-    [ "$width" -lt 40 ] && width=40
-    
-    # Calculate list height (leave room for border and buttons)
-    menu_height=$(( height - 7 ))
-    
-    dialog --clear \
-           --title "$title" \
-           --menu "$message" \
-           "$height" "$width" "$menu_height" \
-           "${items[@]}" \
-           2>&1 >/dev/tty
-    
-    return $?
+    local menu_height=$(( height - 8 ))
+    [ "$menu_height" -lt 3 ] && menu_height=3
+    dialog --clear --title "$title" \
+        --menu "$text" "$height" "$width" "$menu_height" \
+        "$@" 2>&1 >/dev/tty
 }
 
-# Basic dialog boxes
 tui_dialog_message() {
     local title="$1"
-    local message="$2"
+    local text="$2"
     local height="$3"
     local width="$4"
-    
-    # Ensure minimum dimensions
-    [ "$height" -lt 5 ] && height=5
-    [ "$width" -lt 40 ] && width=40
-    
-    dialog --clear \
-           --title "$title" \
-           --msgbox "$message" \
-           "$height" "$width" \
-           2>&1 >/dev/tty
-    
-    return $?
+    dialog --clear --title "$title" \
+        --msgbox "$text" "$height" "$width" 2>&1 >/dev/tty
 }
 
 tui_dialog_yesno() {
     local title="$1"
-    local message="$2"
+    local text="$2"
     local height="$3"
     local width="$4"
-    
-    # Ensure minimum dimensions
-    [ "$height" -lt 5 ] && height=5
-    [ "$width" -lt 40 ] && width=40
-    
-    dialog --clear \
-           --title "$title" \
-           --yesno "$message" \
-           "$height" "$width" \
-           2>&1 >/dev/tty
-    
-    return $?
+    dialog --clear --title "$title" \
+        --yesno "$text" "$height" "$width" 2>&1 >/dev/tty
 }
 
-# Input dialog
 tui_dialog_input() {
     local title="$1"
-    local message="$2"
-    local init="$3"
-    local height="$4"
-    local width="$5"
-    
-    # Ensure minimum dimensions
-    [ "$height" -lt 5 ] && height=5
-    [ "$width" -lt 40 ] && width=40
-    
-    dialog --clear \
-           --title "$title" \
-           --inputbox "$message" \
-           "$height" "$width" \
-           "$init" \
-           2>&1 >/dev/tty
-    
-    return $?
+    local text="$2"
+    local height="$3"
+    local width="$4"
+    dialog --clear --title "$title" \
+        --inputbox "$text" "$height" "$width" 2>&1 >/dev/tty
 }
 
-# Password dialog
 tui_dialog_password() {
     local title="$1"
-    local message="$2"
+    local text="$2"
     local height="$3"
     local width="$4"
-    local insecure=${5:-false}
-    
-    # Ensure minimum dimensions
-    [ "$height" -lt 5 ] && height=5
-    [ "$width" -lt 40 ] && width=40
-    
-    local opts="--clear"
-    [ "$insecure" = true ] && opts="$opts --insecure"
-    
-    dialog $opts \
-           --title "$title" \
-           --passwordbox "$message" \
-           "$height" "$width" \
-           2>&1 >/dev/tty
-    
-    return $?
+    dialog --clear --title "$title" \
+        --passwordbox "$text" "$height" "$width" 2>&1 >/dev/tty
 }
 
-# Form dialog
+tui_dialog_radiolist() {
+    local title="$1"
+    local text="$2"
+    local height="$3"
+    local width="$4"
+    shift 4
+    dialog --clear --title "$title" \
+        --radiolist "$text" "$height" "$width" $((height-8)) \
+        "$@" 2>&1 >/dev/tty
+}
+
+tui_dialog_checklist() {
+    local title="$1"
+    local text="$2"
+    local height="$3"
+    local width="$4"
+    shift 4
+    dialog --clear --title "$title" \
+        --checklist "$text" "$height" "$width" $((height-8)) \
+        "$@" 2>&1 >/dev/tty
+}
+
+tui_dialog_gauge() {
+    local title="$1"
+    local text="$2"
+    local height="$3"
+    local width="$4"
+    local percent="$5"
+    echo "$percent" | dialog --clear --title "$title" \
+        --gauge "$text" "$height" "$width" 0
+}
+
+# Form handling
 tui_dialog_form() {
     local title="$1"
-    local message="$2"
+    local text="$2"
     local height="$3"
     local width="$4"
     shift 4
-    local fields=("$@")
-    
-    # Ensure minimum dimensions
-    [ "$height" -lt $(( ${#fields[@]} / 8 + 8 )) ] && height=$(( ${#fields[@]} / 8 + 8 ))
-    [ "$width" -lt 40 ] && width=40
-    
-    dialog --clear \
-           --title "$title" \
-           --form "$message" \
-           "$height" "$width" \
-           $(( ${#fields[@]} / 8 )) \
-           "${fields[@]}" \
-           2>&1 >/dev/tty
-    
-    return $?
+    dialog --clear --title "$title" \
+        --form "$text" "$height" "$width" $((height-8)) \
+        "$@" 2>&1 >/dev/tty
 }
 
-# Validated form dialog
-tui_dialog_validated_form() {
+# Calendar handling
+tui_dialog_calendar() {
     local title="$1"
-    local message="$2"
+    local text="$2"
     local height="$3"
     local width="$4"
-    shift 4
-    local fields=("$@")
-    
-    while true; do
-        # Get form input
-        local values
-        values=$(tui_dialog_form "$title" "$message" "$height" "$width" "${fields[@]}")
-        local ret=$?
-        [ $ret -ne 0 ] && return $ret
-        
-        # Validate each field
-        local valid=true
-        local error_msg=""
-        local i=0
-        local field_count=$(( ${#fields[@]} / 9 ))
-        
-        while [ $i -lt $field_count ]; do
-            local value=$(echo "$values" | sed -n "$((i+1))p")
-            local validation_type=${fields[$((i*9+8))]}
-            
-            if ! tui_validate "$value" "$validation_type"; then
-                valid=false
-                error_msg=$(tui_get_validation_error "$validation_type")
-                error_msg="Field $((i+1)): $error_msg"
-                break
-            fi
-            ((i++))
-        done
-        
-        # Show error or return values
-        if [ "$valid" = true ]; then
-            echo "$values"
-            return 0
-        else
-            tui_dialog_message "Validation Error" "$error_msg" 8 40
-        fi
-    done
+    local day="$5"
+    local month="$6"
+    local year="$7"
+    dialog --clear --title "$title" \
+        --calendar "$text" "$height" "$width" \
+        "$day" "$month" "$year" 2>&1 >/dev/tty
 }
 
-# Initialize with default settings
-tui_set_dialog_defaults
+# Initialize trap for cleanup
+trap tui_cleanup EXIT INT TERM
 

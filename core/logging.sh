@@ -1,190 +1,187 @@
 #!/bin/bash
 
-# Define log levels
-readonly LOG_LEVEL_DEBUG=0
-readonly LOG_LEVEL_INFO=1
-readonly LOG_LEVEL_WARN=2
-readonly LOG_LEVEL_ERROR=3
+# ANSI color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+GRAY='\033[0;37m'
+NC='\033[0m' # No Color
 
-# Current settings
-_CURRENT_LOG_LEVEL="$LOG_LEVEL_INFO"  # Default to INFO
-_CURRENT_LOG_FILE=""
-_CURRENT_LOG_CONTEXT=""
-_LAST_ERROR=""
-_LOG_MAX_SIZE=$((1024 * 1024))  # 1MB default
+# Log levels as integers
+LOG_LEVEL_DEBUG=0
+LOG_LEVEL_INFO=1
+LOG_LEVEL_SUCCESS=2
+LOG_LEVEL_WARNING=3
+LOG_LEVEL_ERROR=4
+LOG_LEVEL_FATAL=5
 
-# Color codes
-readonly _COLOR_DEBUG='\033[0;34m'   # Blue
-readonly _COLOR_INFO='\033[0;32m'    # Green
-readonly _COLOR_WARN='\033[1;33m'    # Yellow
-readonly _COLOR_ERROR='\033[0;31m'   # Red
-readonly _COLOR_RESET='\033[0m'
+# Current log level (default: INFO)
+: "${LOG_LEVEL:=1}"
+CURRENT_LOG_LEVEL=$LOG_LEVEL
 
-# Helper to convert to uppercase without ${VAR^^}
-_to_upper() {
-    echo "$1" | tr '[:lower:]' '[:upper:]'
+# Log file configuration
+: "${LOG_DIR:=${HOME}/.docker-manager/logs}"
+: "${LOG_FILE:=${LOG_DIR}/docker-manager.log}"
+: "${MAX_LOG_SIZE:=$((10 * 1024 * 1024))}" # 10MB
+
+# Log context
+LOG_CONTEXT=""
+
+# Last error message
+LAST_ERROR=""
+
+# Initialize logging
+init_logging() {
+    # Create log directory if it doesn't exist
+    mkdir -p "$LOG_DIR"
+    
+    # Create or truncate log file
+    if [[ ! -f "$LOG_FILE" ]]; then
+        touch "$LOG_FILE"
+    elif [[ $(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null) -gt $MAX_LOG_SIZE ]]; then
+        mv "$LOG_FILE" "${LOG_FILE}.old"
+        touch "$LOG_FILE"
+    fi
 }
 
-# Helper to get numeric level from string
-_get_level_number() {
-    case "$(_to_upper "$1")" in
-        "DEBUG") echo "$LOG_LEVEL_DEBUG" ;;
-        "INFO")  echo "$LOG_LEVEL_INFO" ;;
-        "WARN"|"WARNING") echo "$LOG_LEVEL_WARN" ;;
-        "ERROR") echo "$LOG_LEVEL_ERROR" ;;
-        *) echo "$LOG_LEVEL_INFO" ;; # Default to INFO
-    esac
-}
-
-# Helper to get level name from number
-_get_level_name() {
-    case "$1" in
-        "$LOG_LEVEL_DEBUG") echo "DEBUG" ;;
-        "$LOG_LEVEL_INFO")  echo "INFO" ;;
-        "$LOG_LEVEL_WARN")  echo "WARN" ;;
-        "$LOG_LEVEL_ERROR") echo "ERROR" ;;
-        *) echo "UNKNOWN" ;;
-    esac
-}
-
-# Set current log level
+# Set log level
 set_log_level() {
-    _CURRENT_LOG_LEVEL="$(_get_level_number "$1")"
+    local level="$1"
+    CURRENT_LOG_LEVEL=$level
 }
 
 # Get current log level
 get_log_level() {
-    _get_level_name "$_CURRENT_LOG_LEVEL"
+    echo "$CURRENT_LOG_LEVEL"
 }
 
-# Format a log message
+# Set log file
+set_log_file() {
+    local file="$1"
+    LOG_FILE="$file"
+    init_logging
+}
+
+# Set log context
+set_log_context() {
+    local context="$1"
+    LOG_CONTEXT="$context"
+}
+
+# Format log message
 format_log_message() {
     local level="$1"
     local message="$2"
     local timestamp
-    timestamp=$(date "+%Y-%m-%d %H:%M:%S")
-    
-    if [ -n "$_CURRENT_LOG_CONTEXT" ]; then
-        echo "[$timestamp] [$level] [$_CURRENT_LOG_CONTEXT] $message"
-    else
-        echo "[$timestamp] [$level] $message"
-    fi
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local context_str=""
+    [[ -n "$LOG_CONTEXT" ]] && context_str="[$LOG_CONTEXT] "
+    echo "[$timestamp] $level $context_str$message"
 }
 
-# Get color for level
-_get_level_color() {
-    case "$1" in
-        "$LOG_LEVEL_DEBUG") echo "$_COLOR_DEBUG" ;;
-        "$LOG_LEVEL_INFO")  echo "$_COLOR_INFO" ;;
-        "$LOG_LEVEL_WARN")  echo "$_COLOR_WARN" ;;
-        "$LOG_LEVEL_ERROR") echo "$_COLOR_ERROR" ;;
-        *) echo "$_COLOR_RESET" ;;
-    esac
-}
-
-# Check if file needs rotation
-_check_rotation() {
-    local file="$1"
-    local size
-    
-    if [ -f "$file" ]; then
-        if [ "$(uname)" = "Darwin" ]; then
-            size=$(stat -f%z "$file")
-        else
-            size=$(stat -c%s "$file")
-        fi
-        
-        if [ "$size" -gt "$_LOG_MAX_SIZE" ]; then
-            mv "$file" "${file}.1"
-        fi
-    fi
-}
-
-# Base logging function
-_log() {
-    local level="$1"
-    local message="$2"
-    local level_name
-    level_name="$(_get_level_name "$level")"
-    
-    # Check if we should log this level
-    if [ "$level" -ge "$_CURRENT_LOG_LEVEL" ] 2>/dev/null; then
-        local formatted_message color
-        formatted_message="$(format_log_message "$level_name" "$message")"
-        color="$(_get_level_color "$level")"
-        
-        # Add color if outputting to terminal
-        if [ -t 1 ]; then
-            printf "%b%s%b\n" "$color" "$formatted_message" "$_COLOR_RESET"
-        else
-            echo "$formatted_message"
-        fi
-        
-        # Write to log file if configured
-        if [ -n "$_CURRENT_LOG_FILE" ]; then
-            _check_rotation "$_CURRENT_LOG_FILE"
-            echo "$formatted_message" >> "$_CURRENT_LOG_FILE"
-        fi
-    fi
-}
-
-# Individual log level functions
-log_debug() { _log "$LOG_LEVEL_DEBUG" "$1"; }
-log_info() { _log "$LOG_LEVEL_INFO" "$1"; }
-log_warn() { _log "$LOG_LEVEL_WARN" "$1"; }
-log_error() { _log "$LOG_LEVEL_ERROR" "$1"; }
-
-# Log file management
-set_log_file() {
-    _CURRENT_LOG_FILE="$1"
-    
-    # Create log directory if needed
-    local dir
-    dir="$(dirname "$_CURRENT_LOG_FILE")"
-    if [ "$dir" != "." ]; then
-        mkdir -p "$dir" 2>/dev/null || return 1
-    fi
-    
-    # Create or clear the log file
-    touch "$_CURRENT_LOG_FILE" 2>/dev/null || return 1
-    
-    # Verify we can write to it
-    if [ ! -w "$_CURRENT_LOG_FILE" ]; then
-        return 1
-    fi
-    
-    return 0
-}
-
-get_log_file() {
-    echo "$_CURRENT_LOG_FILE"
-}
-
-# Context management
-set_log_context() {
-    _CURRENT_LOG_CONTEXT="$1"
-}
-
-# Error handling
-catch_and_log() {
-    local output status
-    
-    # Execute the command and capture both output and status
-    output=$("$@" 2>&1)
-    status=$?
-    
-    # If the command failed, log the error
-    if [ $status -ne 0 ]; then
-        _LAST_ERROR="$output"
-        log_error "$output"
-        return $status
-    fi
-    
-    # Command succeeded
-    echo "$output"
-    return 0
-}
-
+# Get last error
 get_last_error() {
-    echo "$_LAST_ERROR"
+    echo "$LAST_ERROR"
 }
+
+# Logging functions
+log_debug() {
+    if ((CURRENT_LOG_LEVEL <= LOG_LEVEL_DEBUG)); then
+        local formatted_msg
+        formatted_msg=$(format_log_message "DEBUG" "$*")
+        echo -e "${GRAY}$formatted_msg${NC}" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+log_info() {
+    if ((CURRENT_LOG_LEVEL <= LOG_LEVEL_INFO)); then
+        local formatted_msg
+        formatted_msg=$(format_log_message "INFO" "$*")
+        echo -e "${BLUE}$formatted_msg${NC}" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+log_success() {
+    if ((CURRENT_LOG_LEVEL <= LOG_LEVEL_SUCCESS)); then
+        local formatted_msg
+        formatted_msg=$(format_log_message "SUCCESS" "$*")
+        echo -e "${GREEN}$formatted_msg${NC}" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+log_warning() {
+    if ((CURRENT_LOG_LEVEL <= LOG_LEVEL_WARNING)); then
+        local formatted_msg
+        formatted_msg=$(format_log_message "WARNING" "$*")
+        echo -e "${YELLOW}$formatted_msg${NC}" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+log_error() {
+    if ((CURRENT_LOG_LEVEL <= LOG_LEVEL_ERROR)); then
+        local formatted_msg
+        formatted_msg=$(format_log_message "ERROR" "$*")
+        echo -e "${RED}$formatted_msg${NC}" | tee -a "$LOG_FILE" >&2
+        LAST_ERROR="$*"
+    fi
+}
+
+log_fatal() {
+    if ((CURRENT_LOG_LEVEL <= LOG_LEVEL_FATAL)); then
+        local formatted_msg
+        formatted_msg=$(format_log_message "FATAL" "$*")
+        echo -e "${PURPLE}$formatted_msg${NC}" | tee -a "$LOG_FILE" >&2
+        LAST_ERROR="$*"
+    fi
+}
+
+# Progress logging
+log_step() {
+    if ((CURRENT_LOG_LEVEL <= LOG_LEVEL_INFO)); then
+        local formatted_msg
+        formatted_msg=$(format_log_message "STEP" "$*")
+        echo -e "${CYAN}$formatted_msg${NC}" | tee -a "$LOG_FILE" >&2
+    fi
+}
+
+log_progress() {
+    local current="$1"
+    local total="$2"
+    local message="$3"
+    if ((CURRENT_LOG_LEVEL <= LOG_LEVEL_INFO)); then
+        local formatted_msg
+        formatted_msg=$(format_log_message "PROGRESS" "$message")
+        printf "\r${CYAN}%s [%-50s] %d%%" "$formatted_msg" \
+            "$(printf '#%.0s' $(seq 1 $((current * 50 / total))))" \
+            $((current * 100 / total)) >&2
+        echo "$message" >> "$LOG_FILE"
+    fi
+}
+
+# Export logging functions and variables
+export LOG_LEVEL_DEBUG
+export LOG_LEVEL_INFO
+export LOG_LEVEL_SUCCESS
+export LOG_LEVEL_WARNING
+export LOG_LEVEL_ERROR
+export LOG_LEVEL_FATAL
+export CURRENT_LOG_LEVEL
+export LOG_DIR
+export LOG_FILE
+export -f log_debug
+export -f log_info
+export -f log_success
+export -f log_warning
+export -f log_error
+export -f log_fatal
+export -f log_step
+export -f log_progress
+export -f set_log_level
+export -f get_log_level
+export -f set_log_file
+export -f set_log_context
+export -f format_log_message
+export -f get_last_error

@@ -38,7 +38,7 @@ cleanup() {
 echo "Starting database tests..."
 cleanup
 
-# Test configuration functions
+# Test basic configuration functions
 run_test "set_config" '
     set_config "test_key" "test_value" &&
     [[ $(get_config "test_key") == "test_value" ]]
@@ -88,23 +88,26 @@ run_test "multiple_configs" '
     [[ $count -eq 2 ]]
 '
 
-# Test database stats
-run_test "database_stats" '
-    stats=$(get_db_stats) &&
-    [[ -n "$stats" ]]
+# Test platform info functions
+run_test "platform_info" '
+    save_platform_info "test_key" "test_value" "Test Description" "test_category" &&
+    [[ $(get_platform_info "test_key") == "test_value" ]]
 '
 
-# Test database backup
-run_test "database_backup" '
-    mkdir -p test_backups &&
-    backup_database "test_backups" &&
-    count=$(ls test_backups/config_*.db 2>/dev/null | wc -l) &&
-    [[ $count -eq 1 ]]
+# Test auth functions
+run_test "auth_credentials" '
+    save_auth_credentials "test_user" "test_pass" &&
+    verify_credentials "test_user" "test_pass"
+'
+
+# Test test results functions
+run_test "test_results" '
+    save_test_result "test1" "passed" "Test output" 1.5 &&
+    [[ -n $(get_test_results "test1") ]]
 '
 
 # Clean up after tests
 cleanup
-rm -rf test_backups
 
 # Print test results
 echo "----------------------------------------"

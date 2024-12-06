@@ -1,248 +1,231 @@
-# Dev-Ops TUI Library
+# DevOps TUI Framework
 
-A powerful Terminal User Interface (TUI) library for DevOps tools, built in pure Bash. This library provides a rich set of dialog components and utilities for creating interactive terminal applications, with a focus on DevOps tooling and system management.
+A robust Terminal User Interface (TUI) framework for DevOps operations, built in pure Bash. This framework provides a comprehensive solution for building reliable, state-aware terminal applications with proper process management and error recovery.
 
-## Project Overview
+## Core Architecture
 
-This project aims to create a comprehensive TUI framework for DevOps tools with the following goals:
-- Provide a consistent and professional interface for terminal-based applications
-- Simplify the creation of interactive DevOps tools
-- Ensure robust error handling and system stability
-- Support both basic and advanced terminal UI patterns
-- Enable rapid development of DevOps automation tools
+The framework is built around several key components that work together to provide a reliable and maintainable TUI system:
+
+```mermaid
+graph TD
+    A[Terminal State] --> B[Menu System]
+    B --> C[Process Manager]
+    C --> D[Docker Operations]
+    B --> E[Resource Monitor]
+    B --> F[Config Manager]
+    All --> G[Logging System]
+```
+
+### Key Components
+
+1. **Terminal State Management**
+   - Robust terminal state tracking
+   - State restoration on errors
+   - Clean terminal handling
+   - Session persistence
+
+2. **Process Management**
+   - Reliable process lifecycle handling
+   - Resource cleanup
+   - Zombie process prevention
+   - Signal handling
+
+3. **Menu System**
+   - State-aware menu navigation
+   - Consistent UI patterns
+   - Error recovery
+   - User feedback
+
+4. **Docker Operations**
+   - Container lifecycle management
+   - Health monitoring
+   - Network management
+   - Resource tracking
+
+5. **Resource Monitoring**
+   - System resource tracking
+   - Container resource usage
+   - Alert thresholds
+   - Usage history
+
+6. **Configuration Management**
+   - Config file handling
+   - Validation
+   - Auto-backup
+   - Version tracking
+
+7. **Logging System**
+   - Structured logging
+   - Rotation handling
+   - Error tracking
+   - Audit trail
 
 ## Project Structure
 
 ```
 .
-├── core/           # Core functionality and utilities
-├── configs/        # Configuration files and templates
-├── data/          # Data storage and management
-├── demo/          # Demo applications and examples
-├── docker/        # Docker-related components
-├── services/      # Service management modules
-├── tests/         # Test suites and frameworks
-├── tui/           # TUI components and modules
+├── tui/
 │   ├── components/
-│   │   ├── core/      # Core TUI functionality
-│   │   ├── dialog.sh  # Dialog components
-│   │   ├── menu.sh    # Menu system
-│   │   ├── status.sh  # Status bar and monitoring
-│   │   └── test_viewer.sh  # Test results viewer
-└── scripts/       # Utility scripts
+│   │   ├── terminal_state.sh    # Terminal state management
+│   │   ├── process_manager.sh   # Process lifecycle handling
+│   │   ├── menu_state.sh       # Menu state tracking
+│   │   ├── menu_system.sh      # Menu UI components
+│   │   ├── docker_operations.sh # Docker management
+│   │   ├── logging_system.sh   # Logging functionality
+│   │   ├── config_manager.sh   # Configuration handling
+│   │   └── resource_monitor.sh # Resource tracking
+│   ├── main.sh                 # Main application entry
+│   └── theme.sh               # UI theming
+└── docs/
+    ├── architecture.md        # System architecture
+    ├── interactions.md        # Component interactions
+    ├── error_scenarios.md     # Error handling
+    └── components/            # Component documentation
 ```
 
 ## Features
 
-### Dialog Components
-- **Basic Dialogs**
-  - Message boxes
-  - Yes/No dialogs
-  - Info boxes
-  - Input boxes with validation
-  - Password boxes with masking
+### Core Functionality
+- Robust state management
+- Process lifecycle handling
+- Error recovery
+- Resource monitoring
+- Configuration management
+- Structured logging
 
-- **Forms and Input**
-  - Multi-field forms
-  - Field validation (required, number, email, date, IP)
-  - Password fields
-  - Custom validation support
+### UI Components
+- State-aware menus
+- Progress tracking
+- Status updates
+- Error dialogs
+- Configuration forms
 
-- **Menus and Selection**
-  - Single-select menus
-  - Multi-select checklists
-  - Radio lists
-  - Hierarchical menus
-  - Keyboard shortcuts
-  - Menu descriptions
+### Docker Integration
+- Container management
+- Health monitoring
+- Network configuration
+- Resource tracking
 
-- **File Operations**
-  - Text file viewers
-  - File editors
-  - Tail viewers
-  - File selection dialogs
-
-- **Progress Indicators**
-  - Progress bars
-  - Gauges
-  - Mixed gauges
-  - Program output boxes
-
-- **Calendar and Time**
-  - Date selection
-  - Time selection
-  - Calendar navigation
-
-### Advanced Features
-- Automatic dialog sizing and positioning
-- Terminal size awareness
-- Form validation
-- Keyboard navigation
-- Basic mouse support
-- Color support
-- Unicode/ASCII line drawing
-- Dialog shadows and styling
-- Event system for UI updates
-- State management
-- Focus handling
-- Window management
+### System Monitoring
+- Resource usage tracking
+- Alert thresholds
+- Usage history
+- Performance metrics
 
 ## Requirements
 
-- Bash 4.0 or later
-- `dialog` utility
-- Standard Unix utilities (`sed`, `grep`, etc.)
+- Bash 4.0+
+- Docker
+- Standard Unix utilities
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/dev-ops-tui.git
+git clone https://github.com/yourusername/devops-tui.git
 ```
 
 2. Install dependencies:
 ```bash
 # For macOS
-brew install dialog
+brew install docker
 
 # For Ubuntu/Debian
-sudo apt-get install dialog
+sudo apt-get install docker.io
 
 # For CentOS/RHEL
-sudo yum install dialog
+sudo yum install docker
 ```
 
-3. Source the library in your script:
+3. Source the main script:
 ```bash
-source "path/to/tui/components/dialog.sh"
+source "path/to/tui/main.sh"
 ```
 
-## Configuration
+## Usage
 
-The library supports extensive configuration through environment variables:
-
+### Basic Operations
 ```bash
-# Dialog appearance
-TUI_DIALOG_HEIGHT=0           # Auto-size if 0
-TUI_DIALOG_WIDTH=0           # Auto-size if 0
-TUI_DIALOG_BACKTITLE=""      # Background title
-TUI_DIALOG_COLORS=false      # Enable colors
-TUI_DIALOG_ASCII_LINES=false # Use ASCII instead of Unicode
-TUI_DIALOG_NO_SHADOW=false   # Disable shadows
-TUI_DIALOG_NO_MOUSE=false    # Disable mouse support
-TUI_DIALOG_TAB_CORRECT=false # Enable tab correction
-TUI_DIALOG_TAB_LEN=8        # Tab length
+# Start the TUI
+./tui/main.sh
 
-# Dialog behavior
-TUI_DIALOG_SEPARATE_OUTPUT=false
-TUI_DIALOG_NO_COLLAPSE=false
-TUI_DIALOG_CR_WRAP=false
-TUI_DIALOG_TRIM=false
-TUI_DIALOG_NO_NL_EXPAND=false
-TUI_DIALOG_ASPECT=9
+# Run with debug logging
+DEBUG=1 ./tui/main.sh
+
+# Run with custom config
+CONFIG_PATH=/path/to/config ./tui/main.sh
 ```
 
-## Usage Examples
-
-### Basic Message Box
+### Configuration
 ```bash
-create_msgbox "Information" "Operation completed successfully"
+# Core settings
+TERMINAL_STATE_FILE="/tmp/tui_state"
+PROCESS_TIMEOUT=30
+MAX_RETRY_ATTEMPTS=3
+
+# Docker settings
+DOCKER_HEALTH_CHECK_INTERVAL=60
+CONTAINER_RESOURCE_LIMITS=true
+
+# Logging settings
+LOG_LEVEL="info"
+LOG_FILE="/var/log/tui.log"
+ENABLE_AUDIT_TRAIL=true
 ```
 
-### Input with Validation
-```bash
-create_validated_input "Email Input" "Enter your email:" "" "email"
-```
+## Error Handling
 
-### Menu with Shortcuts
-```bash
-create_enhanced_menu "Main Menu" "Select an option:" \
-    "file" "(F)ile Operations" \
-    "edit" "(E)dit Settings" \
-    "quit" "(Q)uit"
-```
+The framework implements comprehensive error handling:
 
-### Form with Validation
-```bash
-create_validated_form "User Info" "Enter user details:" \
-    "Name:" 1 1 "" 1 20 20 0 "required" \
-    "Email:" 2 1 "" 2 20 30 0 "email" \
-    "Age:" 3 1 "" 3 20 3 0 "number"
-```
+1. **Graceful Degradation**
+   - Fallback to simpler UI
+   - Memory-only operation
+   - Reduced functionality mode
 
-### Hierarchical Menu System
-```bash
-create_menu_system "Settings" "Configure System" \
-    "main" \
-    "network" "(N)etwork Settings" \
-    "users" "(U)ser Management" \
-    "---" \
-    "network" \
-    "ip" "IP Configuration" \
-    "dns" "DNS Settings" \
-    "---" \
-    "users" \
-    "add" "Add User" \
-    "del" "Delete User"
-```
+2. **State Recovery**
+   - State checkpoints
+   - Configuration backups
+   - Process recovery
 
-## Development Status
+3. **Resource Management**
+   - Garbage collection
+   - Resource limits
+   - Cleanup procedures
 
-### Completed Features
-- Core TUI framework
-- Basic dialog components
-- Window management
-- Terminal size handling
-- Configuration system
-- Event system
-- Test framework
-- Demo application
+## Development
 
-### In Progress
-- Menu system enhancements
-- Status bar implementation
-- System monitoring
-- Service status display
-- Resource usage monitoring
-- Notification system
-- Status update events
-
-## Testing
-
-The project includes a comprehensive test suite:
-
+### Running Tests
 ```bash
 # Run all tests
-./tests/run_tests.sh
+./tests/run_all.sh
 
-# Run specific test suite
-./tests/tui/components/core/base_test.sh
+# Run component tests
+./tests/components/test_terminal_state.sh
+./tests/components/test_process_manager.sh
 ```
 
-Test coverage includes:
-- Core functionality
-- Dialog components
-- Window management
-- Terminal capabilities
-- Configuration system
-- Event handling
-- Input validation
-- Menu system
+### Adding Components
+1. Create component file in `tui/components/`
+2. Implement state management
+3. Add error handling
+4. Update documentation
+5. Add tests
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create feature branch (`git checkout -b feature/name`)
+3. Commit changes (`git commit -m 'Add feature'`)
+4. Push branch (`git push origin feature/name`)
+5. Create Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see LICENSE file for details.
 
-## Acknowledgments
+## Documentation
 
-- Based on the `dialog` utility
-- Inspired by the C Dialog library
-- Thanks to all contributors
+- [Architecture Overview](docs/architecture.md)
+- [Component Interactions](docs/interactions.md)
+- [Error Scenarios](docs/error_scenarios.md)
+- [Component Documentation](docs/components/)

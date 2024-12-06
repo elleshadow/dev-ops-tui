@@ -1,168 +1,161 @@
 #!/bin/bash
 
+# Process management constants
+PROCESS_STATE_FILE="/tmp/tui_process_state"
+MAX_PROCESS_MEMORY=512  # MB
+
 # Process management data structures
 declare -A MANAGED_PROCESSES=()
-declare -A PROCESS_LOGS=()
+declare -A PROCESS_GROUPS=()
+declare -A PROCESS_STATES=()
 declare -A PROCESS_ERRORS=()
 
 init_process_manager() {
     # Initialize process tracking
     MANAGED_PROCESSES=()
-    PROCESS_LOGS=()
+    PROCESS_GROUPS=()
+    PROCESS_STATES=()
     PROCESS_ERRORS=()
     
-    # Create logs directory if it doesn't exist
-    mkdir -p "${PROJECT_ROOT}/logs"
+    # Initialize state file
+    echo "{}" > "$PROCESS_STATE_FILE"
     
     # Set up process cleanup trap
-    trap 'cleanup_processes' EXIT INT TERM
+    trap 'cleanup_process_manager' EXIT INT TERM
     return 0
 }
 
 start_managed_process() {
-    local process_name="$1"
-    local command="$2"
-    local timeout="${3:-30}"  # Default 30 second timeout
+    local command="$1"
+    local group_id="${2:-}"
+    local auto_recover="${3:-false}"
     
-    # Set up log files
-    local log_file="${PROJECT_ROOT}/logs/${process_name}.log"
-    local error_log="${PROJECT_ROOT}/logs/${process_name}.error.log"
-    
-    # Clear previous logs
-    echo "=== Process Started: $(date) ===" > "$log_file"
-    echo "=== Process Started: $(date) ===" > "$error_log"
-    
-    # Start process with output redirection
-    (eval "$command" > >(tee -a "$log_file") 2> >(tee -a "$error_log" >&2)) &
+    # Start process
+    eval "$command" &
     local pid=$!
     
     # Store process information
-    MANAGED_PROCESSES["$process_name"]=$pid
-    PROCESS_LOGS["$process_name"]=$log_file
-    PROCESS_ERRORS["$process_name"]=$error_log
+    MANAGED_PROCESSES[$pid]="$command"
+    PROCESS_STATES[$pid]="RUNNING"
     
-    # Wait for process to start
-    local count=0
-    while ((count < timeout)); do
-        if ! kill -0 $pid 2>/dev/null; then
-            log_error "Process $process_name failed to start"
-            cleanup_process "$process_name"
-            return 1
-        fi
-        
-        # Check for successful startup in logs
-        if grep -q "Started successfully" "$log_file" 2>/dev/null; then
-            log_info "Process $process_name started successfully"
-            return 0
-        fi
-        
-        sleep 1
-        ((count++))
-    done
-    
-    log_error "Process $process_name startup timed out"
-    cleanup_process "$process_name"
-    return 1
-}
-
-stop_managed_process() {
-    local process_name="$1"
-    local timeout="${2:-30}"  # Default 30 second timeout
-    
-    # Check if process exists
-    local pid="${MANAGED_PROCESSES[$process_name]}"
-    if [[ -z "$pid" ]]; then
-        log_warning "Process $process_name not found"
-        return 0
+    # Add to group if specified
+    if [[ -n "$group_id" ]]; then
+        PROCESS_GROUPS[$pid]="$group_id"
     fi
     
-    # Try graceful shutdown first
-    kill -TERM $pid 2>/dev/null
-    
-    # Wait for process to stop
-    local count=0
-    while ((count < timeout)); do
-        if ! kill -0 $pid 2>/dev/null; then
-            cleanup_process "$process_name"
-            return 0
-        fi
-        sleep 1
-        ((count++))
-    done
-    
-    # Force kill if necessary
-    log_warning "Process $process_name failed to stop gracefully, forcing..."
-    kill -9 $pid 2>/dev/null
-    cleanup_process "$process_name"
-    return 1
-}
-
-cleanup_process() {
-    local process_name="$1"
-    
-    # Kill process if still running
-    local pid="${MANAGED_PROCESSES[$process_name]}"
-    if [[ -n "$pid" ]]; then
-        kill -9 $pid 2>/dev/null || true
+    # Set up auto-recovery if enabled
+    if [[ "$auto_recover" == "true" ]]; then
+        monitor_process "$pid" &
     fi
     
-    # Remove from tracking
-    unset MANAGED_PROCESSES["$process_name"]
-    unset PROCESS_LOGS["$process_name"]
-    unset PROCESS_ERRORS["$process_name"]
-}
-
-cleanup_processes() {
-    # Stop all managed processes
-    local process_name
-    for process_name in "${!MANAGED_PROCESSES[@]}"; do
-        stop_managed_process "$process_name" 5  # Short timeout for cleanup
-    done
+    echo "$pid"
 }
 
 get_process_status() {
-    local process_name="$1"
-    
-    # Check if process is being tracked
-    local pid="${MANAGED_PROCESSES[$process_name]}"
-    if [[ -z "$pid" ]]; then
-        echo "not_running"
-        return 0
-    fi
-    
-    # Check if process is actually running
-    if ! kill -0 $pid 2>/dev/null; then
-        echo "dead"
-        return 1
-    fi
-    
-    echo "running"
-    return 0
+    local pid=$1
+    echo "${PROCESS_STATES[$pid]:-STOPPED}"
 }
 
-tail_process_logs() {
-    local process_name="$1"
-    local log_file="${PROCESS_LOGS[$process_name]}"
-    local error_log="${PROCESS_ERRORS[$process_name]}"
+get_process_error() {
+    local pid=$1
+    echo "${PROCESS_ERRORS[$pid]:-}"
+}
+
+stop_managed_process() {
+    local pid=$1
     
-    if [[ ! -f "$log_file" || ! -f "$error_log" ]]; then
-        log_error "Log files not found for process $process_name"
-        return 1
+    if [[ -n "${MANAGED_PROCESSES[$pid]}" ]]; then
+        kill -TERM "$pid" 2>/dev/null || true
+        PROCESS_STATES[$pid]="STOPPED"
+        unset MANAGED_PROCESSES[$pid]
     fi
+}
+
+create_process_group() {
+    local group_name=$1
+    local group_id="group_${RANDOM}"
+    echo "$group_id"
+}
+
+get_group_process_count() {
+    local group_id=$1
+    local count=0
     
-    # Use terminal state management for clean display
-    with_terminal_state "log_view" "
-        clear
-        echo -e '\033[36m=== Output Log ===\033[0m'
-        tail -f '$log_file' &
-        local tail_pid=\$!
+    for pid in "${!PROCESS_GROUPS[@]}"; do
+        if [[ "${PROCESS_GROUPS[$pid]}" == "$group_id" ]]; then
+            ((count++))
+        fi
+    done
+    
+    echo "$count"
+}
+
+stop_process_group() {
+    local group_id=$1
+    
+    for pid in "${!PROCESS_GROUPS[@]}"; do
+        if [[ "${PROCESS_GROUPS[$pid]}" == "$group_id" ]]; then
+            stop_managed_process "$pid"
+        fi
+    done
+}
+
+get_process_memory() {
+    local pid=$1
+    local memory
+    
+    if [[ -f "/proc/$pid/status" ]]; then
+        memory=$(grep 'VmRSS' "/proc/$pid/status" | awk '{print $2}')
+        echo "$((memory / 1024))"  # Convert KB to MB
+    else
+        echo "0"
+    fi
+}
+
+monitor_process() {
+    local pid=$1
+    
+    while kill -0 "$pid" 2>/dev/null; do
+        local memory
+        memory=$(get_process_memory "$pid")
         
-        echo -e '\033[31m=== Error Log ===\033[0m'
-        tail -f '$error_log' &
-        local error_tail_pid=\$!
+        if [[ "$memory" -gt "$MAX_PROCESS_MEMORY" ]]; then
+            PROCESS_ERRORS[$pid]="Memory limit exceeded"
+            stop_managed_process "$pid"
+            break
+        fi
         
-        # Wait for user input to exit
-        read -n 1
-        kill \$tail_pid \$error_tail_pid 2>/dev/null
-    "
+        sleep 1
+    done
+}
+
+get_recovered_process_id() {
+    local old_pid=$1
+    local command="${MANAGED_PROCESSES[$old_pid]}"
+    
+    if [[ -n "$command" ]]; then
+        start_managed_process "$command"
+    fi
+}
+
+wait_for_processes() {
+    for pid in "$@"; do
+        wait "$pid" 2>/dev/null || true
+    done
+}
+
+cleanup_process_manager() {
+    # Stop all managed processes
+    for pid in "${!MANAGED_PROCESSES[@]}"; do
+        stop_managed_process "$pid"
+    done
+    
+    # Clean up state file
+    rm -f "$PROCESS_STATE_FILE"
+    
+    # Reset data structures
+    MANAGED_PROCESSES=()
+    PROCESS_GROUPS=()
+    PROCESS_STATES=()
+    PROCESS_ERRORS=()
 } 

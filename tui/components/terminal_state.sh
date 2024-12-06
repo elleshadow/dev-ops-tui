@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Terminal state constants
+TERMINAL_STATE_FILE="/tmp/tui_terminal_state"
+TERMINAL_MODE="NORMAL"
+
 # Terminal state stack for managing nested states
 declare -a TERM_STATE_STACK=()
 
@@ -15,7 +19,100 @@ init_terminal_state() {
     
     # Initialize state stack
     TERM_STATE_STACK=()
+    
+    # Initialize state file
+    echo "NORMAL" > "$TERMINAL_STATE_FILE"
+    
+    # Save initial cursor position
+    save_cursor_position
+    
     return 0
+}
+
+get_terminal_mode() {
+    if [[ ! -f "$TERMINAL_STATE_FILE" ]]; then
+        echo "NORMAL"
+        return
+    fi
+    
+    local mode
+    mode=$(cat "$TERMINAL_STATE_FILE")
+    
+    # Validate mode
+    case "$mode" in
+        "NORMAL"|"ALTERNATE")
+            echo "$mode"
+            ;;
+        *)
+            echo "NORMAL"
+            echo "NORMAL" > "$TERMINAL_STATE_FILE"
+            ;;
+    esac
+}
+
+set_terminal_mode() {
+    local mode=$1
+    
+    # Validate mode
+    case "$mode" in
+        "NORMAL"|"ALTERNATE")
+            echo "$mode" > "$TERMINAL_STATE_FILE"
+            TERMINAL_MODE="$mode"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+get_cursor_position() {
+    local pos
+    
+    # Get current position from terminal
+    echo -en "\033[6n"
+    read -sdR pos
+    
+    # Parse response
+    pos=${pos#*[}
+    echo "${pos//;/,}"
+}
+
+save_cursor_position() {
+    tput sc
+    echo "$(get_cursor_position)" > "${TERMINAL_STATE_FILE}.cursor"
+}
+
+get_saved_cursor_position() {
+    if [[ -f "${TERMINAL_STATE_FILE}.cursor" ]]; then
+        cat "${TERMINAL_STATE_FILE}.cursor"
+    else
+        echo "1,1"
+    fi
+}
+
+restore_cursor_position() {
+    tput rc
+}
+
+move_cursor() {
+    local row=$1
+    local col=$2
+    tput cup "$row" "$col"
+}
+
+clear_screen() {
+    tput clear
+    set_terminal_mode "NORMAL"
+}
+
+enter_alternate_screen() {
+    tput smcup
+    set_terminal_mode "ALTERNATE"
+}
+
+exit_alternate_screen() {
+    tput rmcup
+    set_terminal_mode "NORMAL"
 }
 
 push_terminal_state() {
@@ -56,7 +153,7 @@ pop_terminal_state() {
     if ! tput rmcup > /dev/null 2>&1; then
         log_error "Failed to restore terminal state: $state_name"
         return 1
-    }
+    fi
     
     # Pop state from stack
     unset 'TERM_STATE_STACK[-1]'
@@ -73,6 +170,10 @@ cleanup_terminal_state() {
     tput rmcup > /dev/null 2>&1
     tput cnorm > /dev/null 2>&1  # Show cursor
     stty echo > /dev/null 2>&1   # Restore echo
+    
+    # Clean up state files
+    rm -f "$TERMINAL_STATE_FILE" "${TERMINAL_STATE_FILE}.cursor"
+    
     return 0
 }
 

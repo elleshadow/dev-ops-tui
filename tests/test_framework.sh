@@ -202,3 +202,45 @@ run_tests() {
         return 1
     fi
 }
+
+# Test framework with process management
+TIMEOUT=5  # Default timeout in seconds
+TEST_PIDS=()
+
+# Process management
+cleanup_test_processes() {
+    for pid in "${TEST_PIDS[@]}"; do
+        kill -9 "$pid" 2>/dev/null || true
+    done
+    TEST_PIDS=()
+}
+
+run_with_timeout() {
+    local timeout=$1
+    shift
+    local cmd="$@"
+    
+    # Run command in background
+    eval "$cmd" &
+    local pid=$!
+    TEST_PIDS+=($pid)
+    
+    # Wait for completion or timeout
+    local count=0
+    while ((count < timeout)); do
+        if ! kill -0 $pid 2>/dev/null; then
+            wait $pid
+            return $?
+        fi
+        sleep 1
+        ((count++))
+    done
+    
+    # Kill if still running
+    kill -9 $pid 2>/dev/null
+    wait $pid 2>/dev/null
+    return 124  # Timeout exit code
+}
+
+# Add cleanup trap
+trap 'cleanup_test_processes' EXIT INT TERM

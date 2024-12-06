@@ -246,4 +246,74 @@ show_config_editor() {
     if [[ -f "$config_file" ]]; then
         load_config_file "$config_file"
     fi
+}
+
+show_config_menu() {
+    while true; do
+        clear
+        echo -e "\033[36m=== Configuration ===\033[0m"
+        echo
+        echo "1) System Settings"
+        echo "2) Interface Settings"
+        echo "3) Integration Settings"
+        echo "4) Educational Settings"
+        echo "b) Back"
+        echo "q) Quit"
+        echo
+        read -n 1 -p "Select option: " choice
+        echo
+        
+        case $choice in
+            1) show_system_settings ;;
+            2) show_interface_settings ;;
+            3) show_integration_settings ;;
+            4) show_educational_settings ;;
+            b|B) return 0 ;;
+            q|Q) exit 0 ;;
+            *) continue ;;
+        esac
+    done
+}
+
+show_educational_settings() {
+    while true; do
+        clear
+        echo -e "\033[36m=== Educational Settings ===\033[0m"
+        echo
+        echo "Quick Tips: $(show_tips_enabled && echo "Enabled" || echo "Disabled")"
+        echo
+        echo "1) Toggle Quick Tips"
+        echo "2) Reset All Help Read Status"
+        echo "3) View Learning Progress"
+        echo "b) Back"
+        echo
+        read -n 1 -p "Select option: " choice
+        echo
+        
+        case $choice in
+            1) toggle_tips ;;
+            2) reset_help_status ;;
+            3) view_learning_progress ;;
+            b|B) return 0 ;;
+            *) continue ;;
+        esac
+    done
+}
+
+reset_help_status() {
+    rm -f "$EDUCATION_STATE_FILE" "$HELP_HISTORY_FILE"
+    echo "show_tips=true" > "$EDUCATION_STATE_FILE"
+    echo "Help status and history reset. Press any key to continue..."
+    read -n 1
+}
+
+view_learning_progress() {
+    clear
+    echo -e "\033[36m=== Learning Progress ===\033[0m"
+    echo
+    echo "Topics Viewed:"
+    # Add logic to track and display which help topics have been viewed
+    echo
+    echo "Press any key to continue..."
+    read -n 1
 } 

@@ -12,7 +12,7 @@ source "$PROJECT_ROOT/tui/components/logging_system.sh"
 source "$PROJECT_ROOT/tui/components/config_manager.sh"
 source "$PROJECT_ROOT/tui/components/docker_operations.sh"
 source "$PROJECT_ROOT/tui/components/resource_monitor.sh"
-source "$PROJECT_ROOT/tui/components/auth.sh"
+source "$PROJECT_ROOT/tui/components/system_maintenance.sh"
 
 # Initialize all systems
 init_systems() {
@@ -23,6 +23,7 @@ init_systems() {
         "logging_system"
         "config_manager"
         "resource_monitor"
+        "system_maintenance"
     )
     
     for system in "${systems[@]}"; do
@@ -39,6 +40,7 @@ init_systems() {
 # Ensure proper cleanup on exit
 cleanup_on_exit() {
     log_info "Cleaning up..."
+    cleanup_system_maintenance
     cleanup_resource_monitor
     cleanup_docker_resources
     cleanup_processes

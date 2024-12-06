@@ -1,231 +1,201 @@
-# DevOps TUI Framework
+# DevOps TUI: From Zero to Flow in One Command
 
-A robust Terminal User Interface (TUI) framework for DevOps operations, built in pure Bash. This framework provides a comprehensive solution for building reliable, state-aware terminal applications with proper process management and error recovery.
+A development environment orchestrator that eliminates setup friction and gets you into flow state faster. Stop memorizing commands, managing services, or hunting down endpoints - just code.
 
-## Core Architecture
+## The Vision
 
-The framework is built around several key components that work together to provide a reliable and maintainable TUI system:
+```mermaid
+graph LR
+    A[Zero] -->|One Command| B[Full Environment]
+    B -->|Instant Handoff| C[Browser Workspace]
+    C -->|Stay in Flow| D[Build Cool Stuff]
+```
+
+## Quick Start
+```bash
+# Clone and start
+git clone https://github.com/yourusername/devops-tui.git
+cd devops-tui
+./tui/main.sh
+
+# That's it. Really.
+```
+
+## Complete Workflow
 
 ```mermaid
 graph TD
-    A[Terminal State] --> B[Menu System]
-    B --> C[Process Manager]
-    C --> D[Docker Operations]
-    B --> E[Resource Monitor]
-    B --> F[Config Manager]
-    All --> G[Logging System]
+    subgraph "First Run"
+        A[Clone Repository] --> B[Run ./tui/main.sh]
+        B --> C{First Time?}
+        C -->|Yes| D[Install Dependencies]
+        D --> E[Configure Git]
+        E --> F[Setup SSH/GPG]
+        F --> G[Initialize Environment]
+    end
+    
+    subgraph "Service Deployment"
+        G --> H[Deploy Stack]
+        H --> I[PostgreSQL]
+        H --> J[pgAdmin]
+        H --> K[Grafana]
+        H --> L[Prometheus]
+        H --> M[Loki]
+        H --> N[Traefik]
+    end
+    
+    subgraph "Development Flow"
+        N --> O[Show Service URLs]
+        O --> P[Browser Workspace]
+        P --> Q[Development Loop]
+        Q --> R[Git Operations]
+        R --> Q
+    end
+    
+    style A fill:#f9f,stroke:#333
+    style B fill:#f9f,stroke:#333
+    style P fill:#9f9,stroke:#333
+    style Q fill:#9f9,stroke:#333
 ```
 
-### Key Components
+## What It Does
 
-1. **Terminal State Management**
-   - Robust terminal state tracking
-   - State restoration on errors
-   - Clean terminal handling
-   - Session persistence
+### 1. First Run Magic
+- Detects missing tools and installs them
+- Sets up Git, SSH, GPG automatically
+- Configures runtime environments
+- Creates secure credentials
 
-2. **Process Management**
-   - Reliable process lifecycle handling
-   - Resource cleanup
-   - Zombie process prevention
-   - Signal handling
+### 2. Environment Orchestration
+- Deploys complete development stack
+- Manages service dependencies
+- Handles port configurations
+- Sets up secure networking
 
-3. **Menu System**
-   - State-aware menu navigation
-   - Consistent UI patterns
-   - Error recovery
-   - User feedback
+### 3. Instant Workspace
+All your tools, ready to go:
+- PostgreSQL for data
+- pgAdmin for database management
+- Grafana for visualization
+- Prometheus for metrics
+- Loki for logs
+- Traefik for routing
 
-4. **Docker Operations**
-   - Container lifecycle management
-   - Health monitoring
-   - Network management
-   - Resource tracking
-
-5. **Resource Monitoring**
-   - System resource tracking
-   - Container resource usage
-   - Alert thresholds
-   - Usage history
-
-6. **Configuration Management**
-   - Config file handling
-   - Validation
-   - Auto-backup
-   - Version tracking
-
-7. **Logging System**
-   - Structured logging
-   - Rotation handling
-   - Error tracking
-   - Audit trail
-
-## Project Structure
-
-```
-.
-├── tui/
-│   ├── components/
-│   │   ├── terminal_state.sh    # Terminal state management
-│   │   ├── process_manager.sh   # Process lifecycle handling
-│   │   ├── menu_state.sh       # Menu state tracking
-│   │   ├── menu_system.sh      # Menu UI components
-│   │   ├── docker_operations.sh # Docker management
-│   │   ├── logging_system.sh   # Logging functionality
-│   │   ├── config_manager.sh   # Configuration handling
-│   │   └── resource_monitor.sh # Resource tracking
-│   ├── main.sh                 # Main application entry
-│   └── theme.sh               # UI theming
-└── docs/
-    ├── architecture.md        # System architecture
-    ├── interactions.md        # Component interactions
-    ├── error_scenarios.md     # Error handling
-    └── components/            # Component documentation
+### 4. Then Gets Out of Your Way
+```mermaid
+sequenceDiagram
+    participant Dev
+    participant TUI
+    participant Browser
+    
+    Dev->>TUI: Start
+    TUI->>TUI: Setup & Deploy
+    TUI->>Dev: Here's your URLs
+    Dev->>Browser: Continue Work
+    Note over Dev,Browser: Stay in Flow State
 ```
 
-## Features
+## Philosophy
 
-### Core Functionality
-- Robust state management
-- Process lifecycle handling
-- Error recovery
-- Resource monitoring
-- Configuration management
-- Structured logging
+### The Problem
+Traditional development setup:
+1. ❌ Remember dozen of commands
+2. ❌ Configure multiple services
+3. ❌ Manage dependencies
+4. ❌ Track ports and endpoints
+5. ❌ Switch context constantly
 
-### UI Components
-- State-aware menus
-- Progress tracking
-- Status updates
-- Error dialogs
-- Configuration forms
+### Our Solution
+Flow-focused development:
+1. ✅ One command to rule them all
+2. ✅ Automatic service orchestration
+3. ✅ Environment parity guaranteed
+4. ✅ Clear handoff to browser tools
+5. ✅ Stay in your creative flow
 
-### Docker Integration
-- Container management
-- Health monitoring
-- Network configuration
-- Resource tracking
+## Core Features
 
-### System Monitoring
-- Resource usage tracking
-- Alert thresholds
-- Usage history
-- Performance metrics
+### Environment Management
+- **Runtime Versions**: Automatic management of Node.js, Python, Ruby, Go
+- **Database Setup**: PostgreSQL with automatic configuration
+- **Service Orchestration**: Docker-based service management
+- **Security**: Automated credential and secret management
 
-## Requirements
+### Development Tools
+- **Database**: PostgreSQL + pgAdmin
+- **Monitoring**: Grafana + Prometheus
+- **Logging**: Loki
+- **Routing**: Traefik
 
-- Bash 4.0+
-- Docker
-- Standard Unix utilities
+### Workflow Integration
+- **Git Flow**: Branch management and remote setup
+- **CI/CD**: GitHub Actions integration
+- **Docker**: Container orchestration
+- **Security**: SSH and GPG key management
 
-## Installation
+## Service URLs
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/devops-tui.git
-```
-
-2. Install dependencies:
-```bash
-# For macOS
-brew install docker
-
-# For Ubuntu/Debian
-sudo apt-get install docker.io
-
-# For CentOS/RHEL
-sudo yum install docker
-```
-
-3. Source the main script:
-```bash
-source "path/to/tui/main.sh"
-```
-
-## Usage
-
-### Basic Operations
-```bash
-# Start the TUI
-./tui/main.sh
-
-# Run with debug logging
-DEBUG=1 ./tui/main.sh
-
-# Run with custom config
-CONFIG_PATH=/path/to/config ./tui/main.sh
-```
-
-### Configuration
-```bash
-# Core settings
-TERMINAL_STATE_FILE="/tmp/tui_state"
-PROCESS_TIMEOUT=30
-MAX_RETRY_ATTEMPTS=3
-
-# Docker settings
-DOCKER_HEALTH_CHECK_INTERVAL=60
-CONTAINER_RESOURCE_LIMITS=true
-
-# Logging settings
-LOG_LEVEL="info"
-LOG_FILE="/var/log/tui.log"
-ENABLE_AUDIT_TRAIL=true
-```
-
-## Error Handling
-
-The framework implements comprehensive error handling:
-
-1. **Graceful Degradation**
-   - Fallback to simpler UI
-   - Memory-only operation
-   - Reduced functionality mode
-
-2. **State Recovery**
-   - State checkpoints
-   - Configuration backups
-   - Process recovery
-
-3. **Resource Management**
-   - Garbage collection
-   - Resource limits
-   - Cleanup procedures
+After deployment, everything is available at predictable URLs:
+- Database: pgAdmin at http://pgadmin.localhost
+- Metrics: Grafana at http://grafana.localhost
+- Monitoring: Prometheus at http://prometheus.localhost
+- Logs: Loki at http://loki.localhost
+- Routing: Traefik at http://localhost:8080
 
 ## Development
 
-### Running Tests
+### Prerequisites
+- Bash 4.0+
+- Git
+- Docker (installed automatically if missing)
+
+### Contributing
+1. Fork the repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
+
+### Testing
 ```bash
 # Run all tests
 ./tests/run_all.sh
 
-# Run component tests
-./tests/components/test_terminal_state.sh
-./tests/components/test_process_manager.sh
+# Run specific component tests
+./tests/components/test_*.sh
 ```
 
-### Adding Components
-1. Create component file in `tui/components/`
-2. Implement state management
-3. Add error handling
-4. Update documentation
-5. Add tests
+## Architecture
 
-## Contributing
+### System Architecture
+```mermaid
+graph TD
+    A[TUI Core] --> B[Environment Setup]
+    A --> C[Service Orchestration]
+    A --> D[Security Management]
+    B --> E[Runtime Manager]
+    B --> F[Git Config]
+    C --> G[Docker Compose]
+    C --> H[Service Discovery]
+    D --> I[Secrets Manager]
+    D --> J[SSH/GPG]
+```
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/name`)
-3. Commit changes (`git commit -m 'Add feature'`)
-4. Push branch (`git push origin feature/name`)
-5. Create Pull Request
+### Flow Philosophy
+```mermaid
+graph LR
+    A[Development] --> B[Flow State]
+    B --> C[Productivity]
+    C --> D[Better Code]
+    D --> A
+```
 
 ## License
-
 MIT License - see LICENSE file for details.
 
-## Documentation
+## Support
+- Issues: GitHub Issues
+- Docs: /docs directory
+- Wiki: GitHub Wiki
 
-- [Architecture Overview](docs/architecture.md)
-- [Component Interactions](docs/interactions.md)
-- [Error Scenarios](docs/error_scenarios.md)
-- [Component Documentation](docs/components/)
+Remember: The goal isn't to provide every feature - it's to get you into flow state as fast as possible, then get out of your way.

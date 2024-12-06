@@ -1,224 +1,289 @@
 # DevOps TUI Architecture
 
-This document provides a comprehensive overview of the DevOps TUI system architecture.
+## Philosophy: Flow State First
 
-## System Overview
-
-The system is built with a modular architecture focusing on clean state management and robust process handling.
+The architecture is designed around one core principle: **Get developers into flow state as quickly as possible**.
 
 ```mermaid
-flowchart TD
-    subgraph Core ["Core Components"]
-        TS[Terminal State]
-        PM[Process Manager]
-        MS[Menu State]
+graph TD
+    subgraph "Developer Journey"
+        A[Zero State] --> B[Environment Ready]
+        B --> C[Browser Handoff]
+        C --> D[Flow State]
+        D --> E[Productivity Loop]
+        E --> D
     end
-
-    subgraph UI ["UI Components"]
-        TH[Theme]
-        MM[Menu System]
-        DG[Dialog System]
+    
+    subgraph "TUI Magic"
+        F[Runtime Setup]
+        G[Service Orchestration]
+        H[Security Config]
+        I[Network Setup]
     end
-
-    subgraph Services ["Service Components"]
-        DO[Docker Operations]
-        RM[Resource Monitor]
-        LG[Logging System]
-        CF[Config Manager]
+    
+    subgraph "Background Processes"
+        J[Health Monitoring]
+        K[Auto Updates]
+        L[Error Recovery]
     end
-
-    MM --> MS
-    MM --> TS
-    DG --> TH
-    DG --> TS
-    DO --> PM
-    RM --> PM
-    LG --> TS
-    CF --> MS
-    MS --> TS
+    
+    A --> F
+    A --> G
+    A --> H
+    A --> I
+    
+    G --> J
+    G --> K
+    G --> L
+    
+    style D fill:#9f9,stroke:#333
+    style E fill:#9f9,stroke:#333
 ```
 
-## State Management
+## Service Architecture
 
-The system uses a hierarchical state management system to maintain clean state transitions and proper cleanup.
+```mermaid
+graph TD
+    subgraph "Frontend Layer"
+        A[TUI Interface]
+        B[Browser Tools]
+    end
+    
+    subgraph "Orchestration Layer"
+        C[Docker Compose]
+        D[Service Discovery]
+        E[Health Checks]
+    end
+    
+    subgraph "Development Services"
+        F[PostgreSQL]
+        G[pgAdmin]
+        H[Grafana]
+        I[Prometheus]
+        J[Loki]
+        K[Traefik]
+    end
+    
+    subgraph "System Services"
+        L[SQLite DB]
+        M[Docker Engine]
+        N[Network Manager]
+    end
+    
+    A --> C
+    C --> D
+    D --> E
+    
+    C --> F
+    C --> G
+    C --> H
+    C --> I
+    C --> J
+    C --> K
+    
+    A --> L
+    A --> M
+    A --> N
+    
+    B --> G
+    B --> H
+    B --> I
+    B --> J
+    B --> K
+    
+    style A fill:#f96,stroke:#333
+    style B fill:#9f9,stroke:#333
+    style L fill:#666,stroke:#333,color:#fff
+```
+
+## Data Flow
+
+```mermaid
+graph LR
+    subgraph "System Layer"
+        A[SQLite DB]
+        B[Config Files]
+        C[State Files]
+    end
+    
+    subgraph "Project Layer"
+        D[PostgreSQL]
+        E[Metrics DB]
+        F[Log Storage]
+    end
+    
+    subgraph "Access Layer"
+        G[TUI]
+        H[pgAdmin]
+        I[Grafana]
+        J[Kibana]
+    end
+    
+    G --> A
+    G --> B
+    G --> C
+    
+    H --> D
+    I --> E
+    J --> F
+    
+    style A fill:#666,stroke:#333,color:#fff
+    style B fill:#666,stroke:#333,color:#fff
+    style C fill:#666,stroke:#333,color:#fff
+```
+
+## Development Workflow
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Init
-    Init --> MainMenu: Authentication Success
-    MainMenu --> DockerMenu: Select Docker
-    MainMenu --> ConfigMenu: Select Config
-    MainMenu --> LogsMenu: Select Logs
-    MainMenu --> MonitorMenu: Select Monitor
+    [*] --> FirstRun: Clone & Start
+    FirstRun --> Setup: Auto Detection
+    Setup --> Services: Deploy Stack
+    Services --> Browser: Handoff
     
-    DockerMenu --> ServiceOp
-    ServiceOp --> DockerMenu
-    
-    ConfigMenu --> ConfigEdit
-    ConfigEdit --> ConfigMenu
-    
-    LogsMenu --> LogView
-    LogView --> LogsMenu
-    
-    MonitorMenu --> ResourceView
-    ResourceView --> MonitorMenu
-    
-    state ServiceOp {
-        [*] --> Running
-        Running --> Success
-        Running --> Failed
-        Success --> [*]
-        Failed --> [*]
+    state Browser {
+        [*] --> Development
+        Development --> Database: pgAdmin
+        Development --> Metrics: Grafana
+        Development --> Logs: Loki
+        Database --> Development
+        Metrics --> Development
+        Logs --> Development
     }
+    
+    Browser --> Services: Only for Management
+    Services --> Browser: Back to Flow
 ```
 
-## Process Management
-
-The system handles long-running processes with proper monitoring and cleanup.
+## Component Interaction
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Menu
-    participant PM as Process Manager
+    participant TUI
     participant Docker
-    participant Logs
+    participant Services
+    participant Browser
     
-    User->>Menu: Select Operation
-    Menu->>PM: start_managed_process()
-    PM->>Docker: Execute Command
-    PM->>Logs: Redirect Output
+    User->>TUI: Start Development
     
-    loop Monitor
-        PM->>Docker: Check Status
-        alt Process Running
-            Docker->>PM: Status OK
-        else Process Failed
-            Docker->>PM: Error Status
-            PM->>Logs: Collect Error Logs
-            PM->>Menu: Show Error Dialog
+    rect rgb(200, 200, 200)
+        Note over TUI,Docker: Setup Phase
+        TUI->>Docker: Check Environment
+        Docker-->>TUI: Status Report
+        TUI->>Docker: Deploy Services
+        Docker->>Services: Start Containers
+        Services-->>Docker: Ready Status
+    end
+    
+    rect rgb(150, 250, 150)
+        Note over TUI,Browser: Handoff Phase
+        TUI->>User: Display Service URLs
+        User->>Browser: Access Services
+        Note over Browser: Development Flow
+    end
+    
+    rect rgb(200, 200, 250)
+        Note over TUI,Services: Background Operations
+        loop Health Checks
+            TUI->>Services: Monitor Health
+            Services-->>TUI: Status Updates
         end
     end
-    
-    PM->>Menu: Operation Complete
-    Menu->>User: Show Result
 ```
 
-## Resource Monitoring
-
-The resource monitoring system collects and visualizes system metrics.
+## Error Recovery
 
 ```mermaid
-flowchart TD
-    subgraph Collection ["Data Collection"]
-        CPU[CPU Metrics]
-        MEM[Memory Metrics]
-        DISK[Disk Metrics]
-    end
+stateDiagram-v2
+    [*] --> Normal
     
-    subgraph Processing ["Data Processing"]
-        TH[Thresholds]
-        AL[Alerts]
-        LOG[Logging]
-    end
+    Normal --> Warning: Health Check
+    Warning --> Critical: No Recovery
+    Warning --> Normal: Auto Recovery
     
-    subgraph Display ["Visualization"]
-        BAR[Usage Bars]
-        HIST[History View]
-        ALERT[Alert Display]
-    end
+    Critical --> Warning: Manual Action
+    Critical --> Normal: Full Recovery
     
-    CPU --> TH
-    MEM --> TH
-    DISK --> TH
+    state Warning {
+        [*] --> Detection
+        Detection --> AutoFix
+        AutoFix --> [*]
+    }
     
-    TH --> AL
-    AL --> LOG
-    AL --> ALERT
-    
-    CPU --> BAR
-    MEM --> BAR
-    DISK --> BAR
-    
-    CPU --> HIST
-    MEM --> HIST
-    DISK --> HIST
+    state Critical {
+        [*] --> Alert
+        Alert --> UserAction
+        UserAction --> ServiceRestart
+        ServiceRestart --> [*]
+    }
 ```
 
-## Configuration Management
-
-The configuration system provides validated settings management.
+## Security Model
 
 ```mermaid
-flowchart TD
-    subgraph Files ["Config Files"]
-        SYS[System Config]
-        DOC[Docker Config]
-        NET[Network Config]
+graph TD
+    subgraph "Access Control"
+        A[SSH Keys]
+        B[GPG Keys]
+        C[Service Credentials]
     end
     
-    subgraph Management ["Config Management"]
-        VAL[Validators]
-        CACHE[Config Cache]
-        LOAD[Config Loader]
+    subgraph "Storage"
+        D[System DB]
+        E[Config Files]
+        F[Secrets]
     end
     
-    subgraph Access ["Access Layer"]
-        GET[Get Config]
-        SET[Set Config]
-        EDIT[Edit Config]
+    subgraph "Network"
+        G[Traefik]
+        H[Docker Network]
+        I[Service Mesh]
     end
     
-    SYS --> LOAD
-    DOC --> LOAD
-    NET --> LOAD
+    A --> D
+    B --> D
+    C --> D
     
-    LOAD --> CACHE
-    CACHE --> GET
-    SET --> VAL
-    VAL --> CACHE
-    EDIT --> SET
+    D --> E
+    D --> F
+    
+    G --> H
+    H --> I
+    
+    style D fill:#666,stroke:#333,color:#fff
+    style F fill:#666,stroke:#333,color:#fff
 ```
 
-## Component Details
+## Service Health Management
 
-### Terminal State Management
-- Handles terminal cleanup and restoration
-- Manages screen state stack
-- Ensures proper cleanup on exit
+```mermaid
+graph TD
+    subgraph "Monitoring"
+        A[Health Checks]
+        B[Metrics Collection]
+        C[Log Aggregation]
+    end
+    
+    subgraph "Analysis"
+        D[Status Evaluation]
+        E[Threshold Checks]
+        F[Pattern Detection]
+    end
+    
+    subgraph "Response"
+        G[Auto Recovery]
+        H[Alert System]
+        I[User Notification]
+    end
+    
+    A --> D
+    B --> E
+    C --> F
+    
+    D --> G
+    E --> H
+    F --> I
+```
 
-### Process Management
-- Tracks running processes
-- Handles output redirection
-- Manages process lifecycle
-- Provides cleanup on exit
-
-### Menu System
-- Implements hierarchical menus
-- Maintains menu state stack
-- Handles user input
-- Manages screen transitions
-
-### Docker Operations
-- Manages Docker services
-- Handles service health checks
-- Provides service logs
-- Manages cleanup
-
-### Resource Monitor
-- Collects system metrics
-- Processes threshold alerts
-- Maintains metric history
-- Visualizes resource usage
-
-### Configuration Manager
-- Validates configuration
-- Manages config persistence
-- Provides atomic updates
-- Handles defaults
-
-### Logging System
-- Manages log rotation
-- Provides contextual logging
-- Handles log viewing
-- Maintains log history 
+Remember: Every component and interaction is designed to maintain flow state. The system should handle complexity invisibly and only surface what's needed for development.

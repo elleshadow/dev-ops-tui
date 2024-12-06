@@ -21,97 +21,41 @@ cd devops-tui
 # That's it. Really.
 ```
 
-## Complete Workflow
+## What The TUI Does
 
-```mermaid
-graph TD
-    subgraph "First Run"
-        A[Clone Repository] --> B[Run ./tui/main.sh]
-        B --> C{First Time?}
-        C -->|Yes| D[Install Dependencies]
-        D --> E[Configure Git]
-        E --> F[Setup SSH/GPG]
-        F --> G[Initialize Environment]
-    end
-    
-    subgraph "Service Deployment"
-        G --> H[Deploy Stack]
-        H --> I[PostgreSQL]
-        H --> J[pgAdmin]
-        H --> K[Grafana]
-        H --> L[Prometheus]
-        H --> M[Loki]
-        H --> N[Traefik]
-    end
-    
-    subgraph "Development Flow"
-        N --> O[Show Service URLs]
-        O --> P[Browser Workspace]
-        P --> Q[Development Loop]
-        Q --> R[Git Operations]
-        R --> Q
-    end
-    
-    style A fill:#f9f,stroke:#333
-    style B fill:#f9f,stroke:#333
-    style P fill:#9f9,stroke:#333
-    style Q fill:#9f9,stroke:#333
-```
+The TUI (Terminal User Interface) is your command center for development operations:
 
-## What It Does
+### 1. Environment Setup
+- Detects and installs missing tools automatically
+- Sets up development runtime (Node.js, Python, Ruby, Go)
+- Configures local databases and services
+- Manages Docker containers and networking
 
-### 1. First Run Magic
-- Detects missing tools and installs them
-- Sets up Git, SSH, GPG automatically
-- Configures runtime environments
-- Creates secure credentials
+### 2. Service Management
+- One-click deployment of your development stack
+- Automatic port configuration and service discovery
+- Health monitoring and status dashboards
+- Log aggregation and viewing
 
-### 2. Environment Orchestration
-- Deploys complete development stack
-- Manages service dependencies
-- Handles port configurations
-- Sets up secure networking
+### 3. Repository Management
+- Configures GitHub repository settings and templates
+- Sets up CI/CD pipelines and workflows
+- Manages security scanning and enforcement
+- Handles code quality tools and checks
 
-### 3. Instant Workspace
-All your tools, ready to go:
-- PostgreSQL for data
-- pgAdmin for database management
-- Grafana for visualization
-- Prometheus for metrics
-- Loki for logs
-- Traefik for routing
+### 4. Development Workflow
+- Manages Git operations and branching
+- Handles database migrations and backups
+- Provides quick access to logs and metrics
+- Automates common development tasks
 
-### 4. Then Gets Out of Your Way
-```mermaid
-sequenceDiagram
-    participant Dev
-    participant TUI
-    participant Browser
-    
-    Dev->>TUI: Start
-    TUI->>TUI: Setup & Deploy
-    TUI->>Dev: Here's your URLs
-    Dev->>Browser: Continue Work
-    Note over Dev,Browser: Stay in Flow State
-```
+### 5. Security & Credentials
+- Manages SSH and GPG keys
+- Handles secrets and environment variables
+- Configures secure access to services
+- Sets up authentication for tools
 
-## Philosophy
-
-### The Problem
-Traditional development setup:
-1. ❌ Remember dozen of commands
-2. ❌ Configure multiple services
-3. ❌ Manage dependencies
-4. ❌ Track ports and endpoints
-5. ❌ Switch context constantly
-
-### Our Solution
-Flow-focused development:
-1. ✅ One command to rule them all
-2. ✅ Automatic service orchestration
-3. ✅ Environment parity guaranteed
-4. ✅ Clear handoff to browser tools
-5. ✅ Stay in your creative flow
+The TUI provides a simple menu-driven interface to all these features, eliminating the need to remember commands or manage configurations manually.
 
 ## Core Features
 
@@ -126,6 +70,19 @@ Flow-focused development:
 - **Monitoring**: Grafana + Prometheus
 - **Logging**: Loki
 - **Routing**: Traefik
+
+### Repository Automation
+The TUI includes comprehensive repository automation features. See:
+- [Repository Automation Guide](docs/concepts/recipes/repository_automation.md)
+- [Implementation Guide](docs/concepts/recipes/implementation_guide.md)
+- [Automation Roadmap](docs/concepts/recipes/automation_roadmap.md)
+
+Key automation features:
+- Automated repository setup and configuration
+- Template management (Issues, PRs, Discussions)
+- GitHub Actions workflow automation
+- Security scanning and enforcement
+- Development standards automation
 
 ### Workflow Integration
 - **Git Flow**: Branch management and remote setup
@@ -189,6 +146,12 @@ graph LR
     C --> D[Better Code]
     D --> A
 ```
+
+## Documentation
+- [Architecture Guide](docs/concepts/architecture_guide.md)
+- [Practical Guide](docs/concepts/practical_guide.md)
+- [Recipes & Patterns](docs/concepts/recipes/)
+- [Component Documentation](docs/components/)
 
 ## License
 MIT License - see LICENSE file for details.
